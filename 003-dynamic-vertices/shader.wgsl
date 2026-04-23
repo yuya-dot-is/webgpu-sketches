@@ -52,8 +52,8 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         let first_side_angle: f32 = f32(triangle_index) * central_angle;
         out.position = vec4f(cos(first_side_angle), sin(first_side_angle), 0.0, 1.0);
     } else {
-    // 六角形の2辺目の角度
-    let second_side_angle: f32 = f32(triangle_index) * central_angle + central_angle;
+        // 六角形の2辺目の角度
+        let second_side_angle: f32 = f32(triangle_index) * central_angle + central_angle;
         out.position = vec4f(cos(second_side_angle), sin(second_side_angle), 0.0, 1.0);
     }
     return out;
@@ -62,5 +62,30 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     const PI: f32 = 3.14159265359;
+    // 三角形1つ分の色の変化量
+    const color_change_amount_per_triangle: f32 = 1f / 6f;
+    // 1周にかかる時間（秒）
+    const period: f32 = 2f * PI;
+    // 三角形1つ分にかかる時間（秒)
+    let triangle_period: f32 =  period / 6f;
+    // 現在、何個目の三角形まで色が変わったか
+    let changed_triangle_count: u32 = u32(floor(u.time / triangle_period));
+    // 最後に色が変わった三角形のインデックス
+    let last_changed_triangle_index: u32 = changed_triangle_count % 6u;
+    let current_triangle_count: u32 = changed_triangle_count - last_changed_triangle_index + in.triangle_index;
+    var change_amount: f32;
+    if(in.triangle_index == 6u) {
+        // 動く三角形の色の元
+        change_amount = f32(changed_triangle_count) * color_change_amount_per_triangle;
+    } else if(in.triangle_index < last_changed_triangle_index) {
+        // 今の周回で既に色が変わった三角形の色の元
+        change_amount = f32(current_triangle_count) * color_change_amount_per_triangle;
+    } else {
+        // 今の周回でまだ色が変わっていない三角形の色の元
+        change_amount = (f32(current_triangle_count) - 6f) * color_change_amount_per_triangle ;
+    }
+    let r: f32 = sin(change_amount / 0.9) * 0.5 + 0.5;
+    let g: f32 = sin(change_amount / 0.95) * 0.5 + 0.5;
+    let b: f32 = sin(change_amount / 1.0) * 0.5 + 0.5; 
     return vec4f(r, g, b, 1.0);
 }
