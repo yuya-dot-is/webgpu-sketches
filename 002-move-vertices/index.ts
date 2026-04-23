@@ -63,6 +63,26 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
     });
 }
 
+const createF32Buffer = (device: GPUDevice, pipeline: GPURenderPipeline, dataProvider: () => Float32Array<ArrayBuffer>) => {
+    const buffer = device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    const bindGroup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [{
+            binding: 0,
+            resource: { buffer }
+        }]
+    });
+    return {
+        update: () => {
+            device.queue.writeBuffer(buffer, 0, dataProvider());
+        },
+        bindGroup
+    };
+}
+
 
 async function main() {
     // 初期化
@@ -76,8 +96,18 @@ async function main() {
     // パイプラインの生成
     const pipeline = createPipline(device, shaderModule, canvasFormat);
 
+
+    // wgslに渡す値を設定する
+    const timeBuffer = createF32Buffer(device, pipeline, () => {
+        return new Float32Array([performance.now() / 1000])
+    });
+
     // 描画処理
     function render() {
+
+        // wgslに渡す値を更新する
+        timeBuffer.update();
+
         const commandEncoder = device.createCommandEncoder();
         const textureView = context.getCurrentTexture().createView();
 
@@ -92,10 +122,14 @@ async function main() {
 
         const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
         passEncoder.setPipeline(pipeline);
+
+        // wgslに値を渡す
+        passEncoder.setBindGroup(0, timeBuffer.bindGroup);
         passEncoder.draw(3); // 3つの頂点を描画
         passEncoder.end();
 
         device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(render);
     }
 
     render();
