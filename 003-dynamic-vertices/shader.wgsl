@@ -8,19 +8,38 @@ struct MyUniforms {
 
 @vertex
 fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
-    var pos = array<vec2f, 3>(
-        vec2f(0.0, 0.5),   // 上
-        vec2f(-0.5, -0.5), // 左下
-        vec2f(0.5, -0.5)   // 右下
-    );
+    let triangle_vertex_index: u32 = in_vertex_index % 3u;
+    // 全ての三角形の共通の中心の頂点
+    if(triangle_vertex_index == 0u) {
+        return vec4f(0.0, 0.0, 0.0, 1.0);
+    }
 
-    var p = pos[in_vertex_index];
+    const PI: f32 = 3.14159265359;
+    const triangle_count: u32 = 6u;
+    let triangle_index: u32 = in_vertex_index / 3u;
+    const central_angle: f32 = 2f * PI / f32(triangle_count);
 
-    let offset_x = sin(u.time) * 0.5;
-    let offset_y = cos(u.time) * 0.5;
-    p.x += offset_x;
-    p.y += offset_y;
-    return vec4f(p, 0.0, 1.0);
+    // 動く三角形
+    if(triangle_index == triangle_count){
+        let moving_side_angle: f32 = u.time % (2f * PI);
+        // 動く三角形の1辺目の角度
+        if(triangle_vertex_index == 1u) {
+            let side_angle: f32 = floor(moving_side_angle / central_angle) * central_angle;
+            return vec4f(cos(side_angle), sin(side_angle), 0.0, 1.0);
+        }
+        // 動く三角形の2辺目の角度
+        return vec4f(cos(moving_side_angle), sin(moving_side_angle), 0.0, 1.0);
+    }
+
+    // 動かない三角形
+    if(triangle_vertex_index == 1u) {
+        // 六角形の1辺目の角度
+        let first_side_angle: f32 = f32(triangle_index) * central_angle;
+        return vec4f(cos(first_side_angle), sin(first_side_angle), 0.0, 1.0);
+    }
+    // 六角形の2辺目の角度
+    let second_side_angle: f32 = f32(triangle_index) * central_angle + central_angle;
+    return vec4f(cos(second_side_angle), sin(second_side_angle), 0.0, 1.0);
 }
 
 @fragment

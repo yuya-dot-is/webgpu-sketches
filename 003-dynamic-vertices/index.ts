@@ -132,7 +132,7 @@ async function main() {
         timeBuffer.update(); // wgslに渡す値を更新する
         // wgslに値を渡す
         passEncoder.setBindGroup(0, timeBuffer.bindGroup);
-        passEncoder.draw(3); // 3つの頂点を描画
+        passEncoder.draw(21); // 3 * 7個の頂点を描画
     });
 }
 
