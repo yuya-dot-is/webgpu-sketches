@@ -83,6 +83,31 @@ const createF32Buffer = (device: GPUDevice, pipeline: GPURenderPipeline, dataPro
     };
 }
 
+const encode = (device: GPUDevice, context: GPUCanvasContext, pipeline: GPURenderPipeline, drawCommands: (passEncoder: GPURenderPassEncoder) => void) => {
+    const commandEncoder = device.createCommandEncoder();
+    const textureView = context.getCurrentTexture().createView();
+    const renderPassDescriptor: GPURenderPassDescriptor = {
+        colorAttachments: [{
+            view: textureView,
+            clearValue: { r: 0.1, g: 0.1, b: 0.1, a: 1.0 }, // 背景色
+            loadOp: 'clear',
+            storeOp: 'store',
+        }]
+    };
+    const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+    passEncoder.setPipeline(pipeline);
+    drawCommands(passEncoder);
+    passEncoder.end();
+    device.queue.submit([commandEncoder.finish()]);
+}
+
+function startRenderLoop(device: GPUDevice, context: GPUCanvasContext, pipeline: GPURenderPipeline, drawCommands: (passEncoder: GPURenderPassEncoder) => void) {
+    const render = () => {
+        encode(device, context, pipeline, drawCommands);
+        requestAnimationFrame(render);
+    }
+    render();
+}
 
 async function main() {
     // 初期化
@@ -103,36 +128,12 @@ async function main() {
     });
 
     // 描画処理
-    function render() {
-
-        // wgslに渡す値を更新する
-        timeBuffer.update();
-
-        const commandEncoder = device.createCommandEncoder();
-        const textureView = context.getCurrentTexture().createView();
-
-        const renderPassDescriptor: GPURenderPassDescriptor = {
-            colorAttachments: [{
-                view: textureView,
-                clearValue: { r: 0.1, g: 0.1, b: 0.1, a: 1.0 }, // 背景色
-                loadOp: 'clear',
-                storeOp: 'store',
-            }]
-        };
-
-        const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-        passEncoder.setPipeline(pipeline);
-
+    startRenderLoop(device, context, pipeline, (passEncoder) => {
+        timeBuffer.update(); // wgslに渡す値を更新する
         // wgslに値を渡す
         passEncoder.setBindGroup(0, timeBuffer.bindGroup);
         passEncoder.draw(3); // 3つの頂点を描画
-        passEncoder.end();
-
-        device.queue.submit([commandEncoder.finish()]);
-        requestAnimationFrame(render);
-    }
-
-    render();
+    });
 }
 
 main().catch(console.error);
