@@ -63,13 +63,14 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
     });
 }
 
-const createF32Buffer = (device: GPUDevice, pipeline: GPURenderPipeline, dataProvider: () => Float32Array<ArrayBuffer>) => {
+const createBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => Float32Array<ArrayBuffer>) => {
+    const bindGroupIndex = 0;
     const buffer = device.createBuffer({
-        size: 4,
+        size,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     const bindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
+        layout: pipeline.getBindGroupLayout(bindGroupIndex),
         entries: [{
             binding: 0,
             resource: { buffer }
@@ -79,6 +80,7 @@ const createF32Buffer = (device: GPUDevice, pipeline: GPURenderPipeline, dataPro
         update: () => {
             device.queue.writeBuffer(buffer, 0, dataProvider());
         },
+        bindGroupIndex,
         bindGroup
     };
 }
@@ -123,15 +125,17 @@ async function main() {
 
 
     // wgslに渡す値を設定する
-    const timeBuffer = createF32Buffer(device, pipeline, () => {
-        return new Float32Array([performance.now() / 1000])
+    const buffer = createBuffer(device, pipeline, 4 * 2, () => {
+        const time = performance.now() / 1000;
+        const aspectRatio = context.canvas.width / context.canvas.height;
+        return new Float32Array([time, aspectRatio])
     });
 
     // 描画処理
     startRenderLoop(device, context, pipeline, (passEncoder) => {
-        timeBuffer.update(); // wgslに渡す値を更新する
+        buffer.update(); // wgslに渡す値を更新する
         // wgslに値を渡す
-        passEncoder.setBindGroup(0, timeBuffer.bindGroup);
+        passEncoder.setBindGroup(buffer.bindGroupIndex, buffer.bindGroup);
         passEncoder.draw(21); // 3 * 7個の頂点を描画
     });
 }

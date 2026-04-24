@@ -1,6 +1,7 @@
 // 外部（JS）から届くデータの形を定義する
 struct MyUniforms {
     time: f32,
+    aspect_ratio: f32
 };
 
 // 0番のバインドグループの、0番のバインディングに届くデータとして登録
@@ -12,6 +13,30 @@ struct VertexOutput {
     // @interpolate(flat) をつけると、三角形内で色が混ざらず「パキッ」と一色になります
     @location(0) @interpolate(flat) triangle_index: u32,
 };
+
+const ASPECT_TYPE_CONTAIN = 1u;
+const ASPECT_TYPE_COVER   = 2u;
+
+fn to_aspect_vec2f(x: f32, y: f32, aspect_type: u32) -> vec2f {
+    // アスペクト比: 高さを1.0とした時の幅
+    if(aspect_type == ASPECT_TYPE_CONTAIN) {
+        if(u.aspect_ratio < 1f) {
+            // アスペクト比が1.0より小さい場合、高さにアスペクト比をかける
+            return vec2f(x, y * u.aspect_ratio);
+        } else {
+            // アスペクト比が1.0より大きい場合、幅をアスペクト比で割る
+            return vec2f(x / u.aspect_ratio, y);
+        }
+    } else {
+        if(u.aspect_ratio < 1f) {
+            // アスペクト比が1.0より小さい場合、高さをアスペクト比で割る
+            return vec2f(x / u.aspect_ratio, y);
+        } else {
+            // アスペクト比が1.0より大きい場合、幅にアスペクト比をかける
+            return vec2f(x, y * u.aspect_ratio);
+        }
+    }
+}
 
 @vertex
 fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
@@ -38,10 +63,12 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         // 動く三角形の1辺目の角度
         if(triangle_vertex_index == 1u) {
             let side_angle: f32 = floor(moving_side_angle / central_angle) * central_angle;
-            out.position = vec4f(cos(side_angle), sin(side_angle), 0.0, 1.0);
+            let aspect_vec2f = to_aspect_vec2f(cos(side_angle), sin(side_angle), ASPECT_TYPE_CONTAIN);
+            out.position = vec4f(aspect_vec2f, 0.0, 1.0);
         } else {
             // 動く三角形の2辺目の角度
-            out.position = vec4f(cos(moving_side_angle), sin(moving_side_angle), 0.0, 1.0);
+            let aspect_vec2f = to_aspect_vec2f(cos(moving_side_angle), sin(moving_side_angle), ASPECT_TYPE_CONTAIN);
+            out.position = vec4f(aspect_vec2f, 0.0, 1.0);
         }
         return out;
     }
@@ -50,11 +77,13 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
     if(triangle_vertex_index == 1u) {
         // 六角形の1辺目の角度
         let first_side_angle: f32 = f32(triangle_index) * central_angle;
-        out.position = vec4f(cos(first_side_angle), sin(first_side_angle), 0.0, 1.0);
+        let aspect_vec2f = to_aspect_vec2f(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
+        out.position = vec4f(aspect_vec2f, 0.0, 1.0);
     } else {
         // 六角形の2辺目の角度
         let second_side_angle: f32 = f32(triangle_index) * central_angle + central_angle;
-        out.position = vec4f(cos(second_side_angle), sin(second_side_angle), 0.0, 1.0);
+        let aspect_vec2f = to_aspect_vec2f(cos(second_side_angle), sin(second_side_angle), ASPECT_TYPE_CONTAIN);
+        out.position = vec4f(aspect_vec2f, 0.0, 1.0);
     }
     return out;
 }
