@@ -1,7 +1,7 @@
 import shaderCode from "./shader.wgsl?raw";
 
 /**
- * GPUDeviceの取得
+ * GPUDeviceを取得する
  */
 const getDevice = async (): Promise<GPUDevice> => {
     if (!navigator.gpu) {
@@ -18,7 +18,7 @@ const getDevice = async (): Promise<GPUDevice> => {
 }
 
 /*
- * CanvasContextの取得
+ * CanvasContextを取得する
  */
 const getContext = (): GPUCanvasContext => {
     const canvas = document.querySelector('#canvas') as HTMLCanvasElement;
@@ -27,7 +27,7 @@ const getContext = (): GPUCanvasContext => {
 }
 
 /*
- * シェーダーの作成
+ * シェーダーモジュールを作成する
  */
 const createShaderModule = (device: GPUDevice): GPUShaderModule => {
     return device.createShaderModule({
@@ -36,7 +36,7 @@ const createShaderModule = (device: GPUDevice): GPUShaderModule => {
 }
 
 /*
- * パイプラインの作成
+ * パイプラインを作成する
  */
 const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasFormat: GPUTextureFormat) => {
     return device.createRenderPipeline({
@@ -58,6 +58,9 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
     });
 }
 
+/**
+ * WGSLに渡す値を設定する
+ */
 const createBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => Float32Array<ArrayBuffer>) => {
     const bindGroupIndex = 0;
     const buffer = device.createBuffer({
@@ -80,6 +83,9 @@ const createBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: numb
     };
 }
 
+/**
+ * WGSLに渡す命令をエンコードする
+ */
 const encode = (device: GPUDevice, context: GPUCanvasContext, pipeline: GPURenderPipeline, drawCommands: (passEncoder: GPURenderPassEncoder) => void) => {
     const commandEncoder = device.createCommandEncoder();
     const textureView = context.getCurrentTexture().createView();
@@ -98,6 +104,9 @@ const encode = (device: GPUDevice, context: GPUCanvasContext, pipeline: GPURende
     device.queue.submit([commandEncoder.finish()]);
 }
 
+/**
+ * 描画ループを開始する
+ */
 function startRenderLoop(device: GPUDevice, context: GPUCanvasContext, pipeline: GPURenderPipeline, drawCommands: (passEncoder: GPURenderPassEncoder) => void) {
     const render = () => {
         encode(device, context, pipeline, drawCommands);
@@ -106,6 +115,9 @@ function startRenderLoop(device: GPUDevice, context: GPUCanvasContext, pipeline:
     render();
 }
 
+/**
+ * CanvasのサイズをWindowサイズに合わせる
+ */
 const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasFormat: GPUTextureFormat) => {
     const handleResize = () => {
         context.canvas.width = window.innerWidth;
@@ -121,11 +133,16 @@ const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasF
     window.addEventListener('resize', handleResize);
 }
 
+/**
+ * メインの処理
+ */
 async function main() {
     // 初期化
     const device = await getDevice();
     const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
     const context = getContext();
+
+    // Canvasサイズの設定
     fitCanvasToWindow(context, device, canvasFormat);
 
     // シェーダーの生成
@@ -135,7 +152,7 @@ async function main() {
     const pipeline = createPipline(device, shaderModule, canvasFormat);
 
 
-    // wgslに渡す値を設定する
+    // WGSLに渡す値を設定する
     const buffer = createBuffer(device, pipeline, 4 * 2, () => {
         const time = performance.now() / 1000;
         const aspectRatio = context.canvas.width / context.canvas.height;
@@ -144,8 +161,8 @@ async function main() {
 
     // 描画処理
     startRenderLoop(device, context, pipeline, (passEncoder) => {
-        buffer.update(); // wgslに渡す値を更新する
-        // wgslに値を渡す
+        buffer.update(); // WGSLに渡す値を更新する
+        // WGSLに値を渡す
         passEncoder.setBindGroup(buffer.bindGroupIndex, buffer.bindGroup);
         passEncoder.draw(21); // 3 * 7個の頂点を描画
     });
