@@ -75,8 +75,12 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
 
     // 動く三角形の2つの頂点
     if(out.triangle_local_index == MOVING_TRIANGLE_LOCAL_INDEX) {
-        // 動く頂点が成す角度
-        let moving_side_angle: f32 = ctx.time % (2f * PI);
+        // 動く頂点が成す角度(ベース)
+        let base_angle: f32 = ctx.time % (2f * PI);
+        // イージング
+        let easing: f32 = 0.16 * sin(base_angle * f32(POLYGON_DIVISION_COUNT));
+        // 頂点の動きにイージングをかける
+        let moving_side_angle: f32 = base_angle - easing;
         if(triangle_vertex_index == 1u) {
             // 1辺目の角度
             let first_side_angle: f32 = floor(moving_side_angle / central_angle) * central_angle;
