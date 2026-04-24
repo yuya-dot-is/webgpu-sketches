@@ -21,18 +21,18 @@ fn to_aspect_vec2f(x: f32, y: f32, aspect_type: u32) -> vec2f {
     // アスペクト比: 高さを1.0とした時の幅
     if(aspect_type == ASPECT_TYPE_CONTAIN) {
         if(u.aspect_ratio < 1f) {
-            // アスペクト比が1.0より小さい場合、高さにアスペクト比をかける
+            // 高さが大きい場合、高さにアスペクト比(< 1.0)をかけて小さくする。
             return vec2f(x, y * u.aspect_ratio);
         } else {
-            // アスペクト比が1.0より大きい場合、幅をアスペクト比で割る
+            // 幅が大きい場合、幅をアスペクト比(>= 1.0)で割って小さくする。
             return vec2f(x / u.aspect_ratio, y);
         }
     } else {
         if(u.aspect_ratio < 1f) {
-            // アスペクト比が1.0より小さい場合、高さをアスペクト比で割る
+            // 幅が小さい場合、幅をアスペクト比(< 1.0)で割って大きくする。
             return vec2f(x / u.aspect_ratio, y);
         } else {
-            // アスペクト比が1.0より大きい場合、幅にアスペクト比をかける
+            // 高さが小さい場合、高さにアスペクト比(>= 1.0)をかけて大きくする。
             return vec2f(x, y * u.aspect_ratio);
         }
     }
