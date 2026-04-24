@@ -20,14 +20,9 @@ const getDevice = async (): Promise<GPUDevice> => {
 /*
  * CanvasContextの取得
  */
-const getContext = (device: GPUDevice, canvasFormat: GPUTextureFormat): GPUCanvasContext => {
+const getContext = (): GPUCanvasContext => {
     const canvas = document.querySelector('#canvas') as HTMLCanvasElement;
     const context = canvas.getContext('webgpu') as GPUCanvasContext;
-    context.configure({
-        device: device,
-        format: canvasFormat,
-        alphaMode: 'opaque',
-    });
     return context;
 }
 
@@ -111,11 +106,27 @@ function startRenderLoop(device: GPUDevice, context: GPUCanvasContext, pipeline:
     render();
 }
 
+const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasFormat: GPUTextureFormat) => {
+    const handleResize = () => {
+        context.canvas.width = window.innerWidth;
+        context.canvas.height = window.innerHeight;
+        // WebGPUのコンテキストを新しいサイズで再構成
+        context.configure({
+            device: device,
+            format: canvasFormat,
+            alphaMode: 'opaque',
+        });
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+}
+
 async function main() {
     // 初期化
     const device = await getDevice();
     const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
-    const context = getContext(device, canvasFormat);
+    const context = getContext();
+    fitCanvasToWindow(context, device, canvasFormat);
 
     // シェーダーの生成
     const shaderModule = createShaderModule(device);
