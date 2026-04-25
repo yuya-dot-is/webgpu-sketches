@@ -1,6 +1,15 @@
 import shaderCode from "./shader.wgsl?raw";
 
 /**
+ * マウスカーソルの位置
+ */
+type MousePosition = {
+    x: number;
+    y: number;
+}
+
+
+/**
  * GPUDeviceを取得する
  */
 const getDevice = async (): Promise<GPUDevice> => {
@@ -136,7 +145,7 @@ const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasF
 /**
  * マウスカーソルの位置を追跡する
  */
-const setupMouseTracker = () => {
+const setupMouseTracker = (): MousePosition => {
     const mousePosition = { x: 0, y: 0 };
     window.addEventListener('mousemove', (evt: MouseEvent) => {
         mousePosition.x = evt.offsetX;
