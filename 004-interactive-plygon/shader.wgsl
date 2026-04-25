@@ -16,6 +16,8 @@ const POLYGON_DIVISION_COUNT: u32 = 6u;
 struct Context {
     time: f32,
     aspect_ratio: f32,
+    mouse_x: f32,
+    mouse_y: f32,
 };
 
 // 0番のバインドグループの、0番のバインディングに届くデータとして登録

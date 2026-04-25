@@ -134,6 +134,18 @@ const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasF
 }
 
 /**
+ * マウスカーソルの位置を追跡する
+ */
+const setupMouseTracker = () => {
+    const mousePosition = { x: 0, y: 0 };
+    window.addEventListener('mousemove', (evt: MouseEvent) => {
+        mousePosition.x = evt.offsetX;
+        mousePosition.y = evt.offsetY;
+    });
+    return mousePosition;
+}
+
+/**
  * メインの処理
  */
 async function main() {
@@ -151,12 +163,16 @@ async function main() {
     // パイプラインの生成
     const pipeline = createPipline(device, shaderModule, canvasFormat);
 
+    // マウスカーソルの位置の追跡
+    const mousePosition = setupMouseTracker();
 
     // WGSLに渡す値を設定する
-    const buffer = createBuffer(device, pipeline, 4 * 2, () => {
+    const buffer = createBuffer(device, pipeline, 4 * 4, () => {
         const time = performance.now() / 1000;
         const aspectRatio = context.canvas.width / context.canvas.height;
-        return new Float32Array([time, aspectRatio])
+        const mouseX = mousePosition.x / context.canvas.width - 0.5;
+        const mouseY = - (mousePosition.y / context.canvas.height - 0.5);
+        return new Float32Array([time, aspectRatio, mouseX, mouseY]);
     });
 
     // 描画処理
