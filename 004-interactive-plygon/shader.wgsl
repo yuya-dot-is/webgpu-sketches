@@ -96,7 +96,7 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         // 動く頂点が成す角度(ベース)
         let base_angle: f32 = ctx.time % (2f * PI);
         // イージング
-        let easing: f32 = (1f / f32(ctx.side_count)) * sin(base_angle * f32(ctx.side_count));
+        let easing: f32 = (1f / f32(ctx.side_count + 1u)) * sin(base_angle * f32(ctx.side_count));
         // 頂点の動きにイージングをかける
         let moving_side_angle: f32 = base_angle - easing;
         if(triangle_vertex_index == 1u) {
