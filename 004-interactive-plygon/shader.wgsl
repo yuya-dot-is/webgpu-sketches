@@ -6,18 +6,12 @@ const ASPECT_TYPE_CONTAIN: u32 = 1u;
 // アスペクト比タイプ： 画面いっぱいに表示するように拡大
 const ASPECT_TYPE_COVER: u32 = 2u;
 
-// 動く三角形のインデックス
-const MOVING_TRIANGLE_LOCAL_INDEX: u32 = 6u;
-
-// 多角形の分割数
-const POLYGON_DIVISION_COUNT: u32 = 6u;
-
 // 外部（JS）から届くデータの型定義
 struct Context {
     time: f32,
     aspect_ratio: f32,
     mouse_x: f32,
-    mouse_y: f32,
+    side_count: u32,
 };
 
 // 0番のバインドグループの、0番のバインディングに届くデータとして登録
@@ -93,14 +87,16 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
     }
 
     // 三角形1つ分の中心の角度
-    const central_angle: f32 = 2f * PI / f32(POLYGON_DIVISION_COUNT);
+    let central_angle: f32 = 2f * PI / f32(ctx.side_count);
+    // 動く三角形のインデックス
+    let moving_triangle_local_index = ctx.side_count;
 
     // 動く三角形の2つの頂点
-    if(out.triangle_local_index == MOVING_TRIANGLE_LOCAL_INDEX) {
+    if(out.triangle_local_index == moving_triangle_local_index) {
         // 動く頂点が成す角度(ベース)
         let base_angle: f32 = ctx.time % (2f * PI);
         // イージング
-        let easing: f32 = 0.16 * sin(base_angle * f32(POLYGON_DIVISION_COUNT));
+        let easing: f32 = (1f / f32(ctx.side_count)) * sin(base_angle * f32(ctx.side_count));
         // 頂点の動きにイージングをかける
         let moving_side_angle: f32 = base_angle - easing;
         if(triangle_vertex_index == 1u) {
@@ -142,21 +138,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     // 1周にかかる時間（秒）
     const period: f32 = 2f * PI;
     // 三角形1つ分にかかる時間（秒)
-    let triangle_period: f32 =  period / f32(POLYGON_DIVISION_COUNT);
+    let triangle_period: f32 =  period / f32(ctx.side_count);
 
     // 現在、色変え中の三角形の通算のインデックス(0〜)
     let active_triangle_total_index: u32 = u32(floor(ctx.time / triangle_period));
     // 現在、色変え中の三角形のインデックス(0〜5)
-    let active_triangle_local_index: u32 = active_triangle_total_index % POLYGON_DIVISION_COUNT;
+    let active_triangle_local_index: u32 = active_triangle_total_index % ctx.side_count;
     // 今回のターゲットの頂点が属する三角形の通算のインデックス(0〜)
     let target_triangle_total_index: u32 = active_triangle_total_index - active_triangle_local_index + in.triangle_local_index;
 
     // 色の素となる数値
     var color_change_amount: f32;
     // 三角形1つ分の色の変化量
-    const color_change_amount_per_triangle: f32 = 1f / f32(POLYGON_DIVISION_COUNT);
+    let color_change_amount_per_triangle: f32 = 1f / f32(ctx.side_count);
+    // 動く三角形のインデックス
+    let moving_triangle_local_index = ctx.side_count;
 
-    if(in.triangle_local_index == MOVING_TRIANGLE_LOCAL_INDEX) {
+    if(in.triangle_local_index == moving_triangle_local_index) {
         // 動く三角形の色の素
         color_change_amount = f32(active_triangle_total_index) * color_change_amount_per_triangle;
     } else if(in.triangle_local_index < active_triangle_local_index) {
@@ -164,7 +162,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
         color_change_amount = f32(target_triangle_total_index) * color_change_amount_per_triangle;
     } else {
         // 今回の周回でまだ色が変わっていない三角形の色の素
-        color_change_amount = (f32(target_triangle_total_index) - f32(POLYGON_DIVISION_COUNT)) * color_change_amount_per_triangle ;
+        color_change_amount = (f32(target_triangle_total_index) - f32(ctx.side_count)) * color_change_amount_per_triangle ;
     }
 
     // 各色を計算（少しずつずらすことで、彩度のあるグラデーションになるように調整）

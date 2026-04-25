@@ -3,11 +3,30 @@ import shaderCode from "./shader.wgsl?raw";
 /**
  * マウスカーソルの位置
  */
-type MousePosition = {
+type Mouse = {
     x: number;
     y: number;
 }
 
+/**
+ * Uniform Buffer Objectのデータ
+ */
+type UniformBufferData = {
+    time: number;
+    aspectRatio: number;
+    mouseX: number;
+    sideCount: number;
+}
+
+/**
+ * Uniform Buffer Objectの並び順
+ */
+const UBO_LAYOUT = {
+    TIME: 0, // float32
+    ASPECT_RATIO: 1, // float32
+    MOUSE_X: 2, // float32
+    SIDE_COUNT: 3, // uint32
+} as const;
 
 /**
  * GPUDeviceを取得する
@@ -70,7 +89,7 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
 /**
  * WGSLに渡す値を設定する
  */
-const createUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => Float32Array<ArrayBuffer>) => {
+const setupUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => BufferSource) => {
     const bindGroupIndex = 0;
     const buffer = device.createBuffer({
         size,
@@ -85,7 +104,9 @@ const createUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, siz
     });
     return {
         update: () => {
-            device.queue.writeBuffer(buffer, 0, dataProvider());
+            const data = dataProvider();
+            device.queue.writeBuffer(buffer, 0, data);
+            return data;
         },
         bindGroupIndex,
         bindGroup
@@ -145,13 +166,53 @@ const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasF
 /**
  * マウスカーソルの位置を追跡する
  */
-const setupMouseTracker = (): MousePosition => {
-    const mousePosition = { x: 0, y: 0 };
+const setupMouseTracker = (): Mouse => {
+    const mouse = { x: 0, y: 0 };
     window.addEventListener('mousemove', (evt: MouseEvent) => {
-        mousePosition.x = evt.offsetX;
-        mousePosition.y = evt.offsetY;
+        mouse.x = evt.offsetX;
+        mouse.y = evt.offsetY;
     });
-    return mousePosition;
+    return mouse;
+}
+
+/**
+ * マウスカーソルの位置から多角形の辺の数を計算する
+ */
+const mapMouseYToSideCount = (mouseY: number, canvasHeight: number) => {
+    const y = - (mouseY / canvasHeight - 0.5);
+    // (y + 0.5)が[ 0.0 〜 1.0 ]の範囲なので、全体は[ 3 〜 103 ]の範囲になる。
+    // 4乗することで、角の少ない多角形を表示しやすくしている。
+    return Math.floor((y + 0.5) ** 4 * 100) + 3;
+}
+
+/**
+ * numberをbufferArrayに変換する。
+ */
+const toArrayBuffer = ({ time, aspectRatio, mouseX, sideCount }: UniformBufferData): BufferSource => {
+    const buffer = new ArrayBuffer(16);
+    const f32 = new Float32Array(buffer);
+    const u32 = new Uint32Array(buffer);
+
+    f32[UBO_LAYOUT.TIME] = time;
+    f32[UBO_LAYOUT.ASPECT_RATIO] = aspectRatio;
+    f32[UBO_LAYOUT.MOUSE_X] = mouseX;
+    u32[UBO_LAYOUT.SIDE_COUNT] = sideCount;
+    return f32;
+}
+
+/**
+ * bufferArrayをnumberに変換する。
+ */
+const fromArrayBuffer = (bufferSource: BufferSource): UniformBufferData => {
+    const buffer = 'buffer' in bufferSource ? bufferSource.buffer : bufferSource;
+    const f32 = new Float32Array(buffer);
+    const u32 = new Uint32Array(buffer);
+    return {
+        time: f32[UBO_LAYOUT.TIME],
+        aspectRatio: f32[UBO_LAYOUT.ASPECT_RATIO],
+        mouseX: f32[UBO_LAYOUT.MOUSE_X],
+        sideCount: u32[UBO_LAYOUT.SIDE_COUNT],
+    };
 }
 
 /**
@@ -173,23 +234,27 @@ async function main() {
     const pipeline = createPipline(device, shaderModule, canvasFormat);
 
     // マウスカーソルの位置の追跡
-    const mousePosition = setupMouseTracker();
+    const mouse = setupMouseTracker();
 
     // WGSLに渡す値を設定する
-    const buffer = createUniformBuffer(device, pipeline, 4 * 4, () => {
-        const time = performance.now() / 1000;
-        const aspectRatio = context.canvas.width / context.canvas.height;
-        const mouseX = mousePosition.x / context.canvas.width - 0.5;
-        const mouseY = - (mousePosition.y / context.canvas.height - 0.5);
-        return new Float32Array([time, aspectRatio, mouseX, mouseY]);
+    const buffer = setupUniformBuffer(device, pipeline, 4 * 4, () => {
+        return toArrayBuffer({
+            time: performance.now() / 1000,
+            aspectRatio: context.canvas.width / context.canvas.height,
+            mouseX: mouse.x / context.canvas.width - 0.5,
+            sideCount: mapMouseYToSideCount(mouse.y, context.canvas.height),
+        })
     });
 
     // 描画処理
     startRenderLoop(device, context, pipeline, (passEncoder) => {
-        buffer.update(); // WGSLに渡す値を更新する
+        const data = buffer.update(); // WGSLに渡す値を更新する
         // WGSLに値を渡す
         passEncoder.setBindGroup(buffer.bindGroupIndex, buffer.bindGroup);
-        passEncoder.draw(21); // 3 * 7個の頂点を描画
+        const { sideCount } = fromArrayBuffer(data);
+        const vertexCount = (sideCount + 1) * 3;
+        // 3 * (n + 1) 個の頂点を描画
+        passEncoder.draw(vertexCount);
     });
 }
 
