@@ -70,7 +70,7 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
 /**
  * WGSLに渡す値を設定する
  */
-const createBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => Float32Array<ArrayBuffer>) => {
+const createUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => Float32Array<ArrayBuffer>) => {
     const bindGroupIndex = 0;
     const buffer = device.createBuffer({
         size,
@@ -176,7 +176,7 @@ async function main() {
     const mousePosition = setupMouseTracker();
 
     // WGSLに渡す値を設定する
-    const buffer = createBuffer(device, pipeline, 4 * 4, () => {
+    const buffer = createUniformBuffer(device, pipeline, 4 * 4, () => {
         const time = performance.now() / 1000;
         const aspectRatio = context.canvas.width / context.canvas.height;
         const mouseX = mousePosition.x / context.canvas.width - 0.5;
