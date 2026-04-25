@@ -34,6 +34,17 @@ struct VertexOutput {
 };
 
 /**
+ * マウスの動きに応じて座標を回転させる
+ */
+fn rotate_vec2f_by_mouse_x(x: f32, y: f32) -> vec2f {
+    let angle: f32 = ctx.mouse_x * PI * 2f;
+    let cos_angle: f32 = cos(angle);
+    let sin_angle: f32 = sin(angle);
+    // 回転行列 [[cos, -sin], [sin, cos]] * [x, y] = [x * cos - y + sin, y * sin + y * cos]
+    return vec2f(x * cos_angle - y * sin_angle, x * sin_angle + y * cos_angle);
+}
+
+/**
  * アスペクト比を考慮して座標を変換する
  */
 fn to_aspect_vec2f(x: f32, y: f32, aspect_type: u32) -> vec2f {
@@ -55,6 +66,15 @@ fn to_aspect_vec2f(x: f32, y: f32, aspect_type: u32) -> vec2f {
             return vec2f(x, y * ctx.aspect_ratio);
         }
     }
+}
+
+/**
+ * 頂点の座標を変換する
+ */
+fn transform_vertex(x: f32, y: f32, aspect_type: u32) -> vec2f {
+    let rotated_vec2f:vec2f = rotate_vec2f_by_mouse_x(x, y);
+    let aspect_vec2f = to_aspect_vec2f(rotated_vec2f.x, rotated_vec2f.y, aspect_type);
+    return aspect_vec2f;
 }
 
 @vertex
@@ -87,12 +107,12 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
             // 1辺目の角度
             let first_side_angle: f32 = floor(moving_side_angle / central_angle) * central_angle;
             // 1辺目の頂点
-            let aspect_vec2f = to_aspect_vec2f(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(aspect_vec2f, 0.0, 1.0);
+            let transformed_vec2f = transform_vertex(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
+            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
         } else {
             // 2辺目の頂点
-            let aspect_vec2f = to_aspect_vec2f(cos(moving_side_angle), sin(moving_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(aspect_vec2f, 0.0, 1.0);
+            let transformed_vec2f = transform_vertex(cos(moving_side_angle), sin(moving_side_angle), ASPECT_TYPE_CONTAIN);
+            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
         }
         return out;
     }
@@ -103,14 +123,14 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         let first_side_angle: f32 = f32(out.triangle_local_index) * central_angle;
         if(triangle_vertex_index == 1u) {
             // 1辺目の頂点
-            let aspect_vec2f = to_aspect_vec2f(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(aspect_vec2f, 0.0, 1.0);
+            let transformed_vec2f = transform_vertex(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
+            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
         } else {
             // 2辺目の角度
             let second_side_angle: f32 = first_side_angle + central_angle;
             // 2辺目の頂点
-            let aspect_vec2f = to_aspect_vec2f(cos(second_side_angle), sin(second_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(aspect_vec2f, 0.0, 1.0);
+            let transformed_vec2f = transform_vertex(cos(second_side_angle), sin(second_side_angle), ASPECT_TYPE_CONTAIN);
+            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
         }
         return out;
     }
