@@ -12,6 +12,7 @@ type Mouse = {
  * Uniform Buffer Objectのデータ
  */
 type UniformBufferData = {
+    matrix: Float32Array;
     time: number;
     aspectRatio: number;
     mouseX: number;
@@ -22,11 +23,17 @@ type UniformBufferData = {
  * Uniform Buffer Objectの並び順
  */
 const UBO_LAYOUT = {
-    TIME: 0, // float32
-    ASPECT_RATIO: 1, // float32
-    MOUSE_X: 2, // float32
-    SIDE_COUNT: 3, // uint32
+    MATRIX: 0, // 0〜15番目 mat4x4<f32>
+    TIME: 16, // f32
+    ASPECT_RATIO: 17, // f32
+    MOUSE_X: 18, // f32
+    SIDE_COUNT: 19, // u32
 } as const;
+
+/**
+ * Uniform Buffer Objectのサイズ
+ */
+const UBO_SIZE = 20 * 4;
 
 /**
  * GPUDeviceを取得する
@@ -89,10 +96,10 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
 /**
  * WGSLに渡す値を設定する
  */
-const setupUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, size: number, dataProvider: () => BufferSource) => {
+const setupUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, dataProvider: () => BufferSource) => {
     const bindGroupIndex = 0;
     const buffer = device.createBuffer({
-        size,
+        size: UBO_SIZE,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     const bindGroup = device.createBindGroup({
@@ -186,13 +193,33 @@ const mapMouseYToSideCount = (mouseY: number, canvasHeight: number) => {
 }
 
 /**
+ * 4x4 透視投影行列 (Perspective Projection Matrix)
+ * @param fovDegree 視野角 (例: 45)
+ * @param aspect アスペクト比 (width / height)
+ * @param near 前方クリップ面 (これより近いと映らない)
+ * @param far 後方クリップ面 (これより遠いと映らない)
+ */
+const createPerspectiveMatrix = (fovDegree: number, aspect: number, near: number, far: number): Float32Array => {
+    const f = 1.0 / Math.tan((fovDegree * Math.PI) / 180 / 2);
+    const rangeInv = 1.0 / (near - far);
+
+    // NOTE: WebGPU/WGSL は列優先
+    return new Float32Array([
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (near + far) * rangeInv, -1, // ZをWに押し込むための -1
+        0, 0, near * far * rangeInv * 2, 0
+    ]);
+};
+
+/**
  * numberをbufferArrayに変換する。
  */
-const toArrayBuffer = ({ time, aspectRatio, mouseX, sideCount }: UniformBufferData): BufferSource => {
-    const buffer = new ArrayBuffer(16);
+const toArrayBuffer = ({ matrix, time, aspectRatio, mouseX, sideCount }: UniformBufferData): BufferSource => {
+    const buffer = new ArrayBuffer(UBO_SIZE);
     const f32 = new Float32Array(buffer);
     const u32 = new Uint32Array(buffer);
-
+    f32.set(matrix, UBO_LAYOUT.MATRIX); // setメソッドで一括コピー
     f32[UBO_LAYOUT.TIME] = time;
     f32[UBO_LAYOUT.ASPECT_RATIO] = aspectRatio;
     f32[UBO_LAYOUT.MOUSE_X] = mouseX;
@@ -208,6 +235,7 @@ const fromArrayBuffer = (bufferSource: BufferSource): UniformBufferData => {
     const f32 = new Float32Array(buffer);
     const u32 = new Uint32Array(buffer);
     return {
+        matrix: f32.slice(UBO_LAYOUT.MATRIX, UBO_LAYOUT.MATRIX + 16) as Float32Array,
         time: f32[UBO_LAYOUT.TIME],
         aspectRatio: f32[UBO_LAYOUT.ASPECT_RATIO],
         mouseX: f32[UBO_LAYOUT.MOUSE_X],
@@ -237,8 +265,9 @@ async function main() {
     const mouse = setupMouseTracker();
 
     // WGSLに渡す値を設定する
-    const buffer = setupUniformBuffer(device, pipeline, 4 * 4, () => {
+    const buffer = setupUniformBuffer(device, pipeline, () => {
         return toArrayBuffer({
+            matrix: createPerspectiveMatrix(45, context.canvas.width / context.canvas.height, 0.1, 100),
             time: performance.now() / 1000,
             aspectRatio: context.canvas.width / context.canvas.height,
             mouseX: mouse.x / context.canvas.width - 0.5,

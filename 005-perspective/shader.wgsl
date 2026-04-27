@@ -8,6 +8,7 @@ const ASPECT_TYPE_COVER: u32 = 2u;
 
 // 外部（JS）から届くデータの型定義
 struct Context {
+    matrix: mat4x4<f32>,
     time: f32,
     aspect_ratio: f32,
     mouse_x: f32,
@@ -39,36 +40,20 @@ fn rotate_vec2f_by_mouse_x(x: f32, y: f32) -> vec2f {
 }
 
 /**
- * アスペクト比を考慮して座標を変換する
+ * 頂点の座標を変換する
  */
-fn to_aspect_vec2f(x: f32, y: f32, aspect_type: u32) -> vec2f {
-    // アスペクト比: 高さを1.0とした時の幅
-    if(aspect_type == ASPECT_TYPE_CONTAIN) {
-        if(ctx.aspect_ratio < 1f) {
-            // 高さが大きい場合、高さにアスペクト比(< 1.0)をかけて小さくする。
-            return vec2f(x, y * ctx.aspect_ratio);
-        } else {
-            // 幅が大きい場合、幅をアスペクト比(>= 1.0)で割って小さくする。
-            return vec2f(x / ctx.aspect_ratio, y);
-        }
-    } else {
-        if(ctx.aspect_ratio < 1f) {
-            // 幅が小さい場合、幅をアスペクト比(< 1.0)で割って大きくする。
-            return vec2f(x / ctx.aspect_ratio, y);
-        } else {
-            // 高さが小さい場合、高さにアスペクト比(>= 1.0)をかけて大きくする。
-            return vec2f(x, y * ctx.aspect_ratio);
-        }
-    }
+fn transform_vertex(x: f32, y: f32) -> vec2f {
+    let rotated_vec2f:vec2f = rotate_vec2f_by_mouse_x(x, y);
+    return rotated_vec2f;
 }
 
 /**
- * 頂点の座標を変換する
+ * パースペクティブ変換を適用したvec4fを作成する
  */
-fn transform_vertex(x: f32, y: f32, aspect_type: u32) -> vec2f {
-    let rotated_vec2f:vec2f = rotate_vec2f_by_mouse_x(x, y);
-    let aspect_vec2f = to_aspect_vec2f(rotated_vec2f.x, rotated_vec2f.y, aspect_type);
-    return aspect_vec2f;
+fn create_perspective_vec4f(x: f32, y: f32, z: f32) -> vec4f {
+    let transformed_vec2f = transform_vertex(x, y);
+    let transformed_vec4f = vec4f(transformed_vec2f.x, transformed_vec2f.y, z, 1.0);
+    return ctx.matrix * transformed_vec4f;
 }
 
 @vertex
@@ -82,7 +67,7 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
 
     // 全ての三角形の共通の中心の頂点
     if(triangle_vertex_index == 0u) {
-        out.position = vec4f(0.0, 0.0, 0.0, 1.0);
+        out.position = create_perspective_vec4f(0.0, 0.0, -3.0);
         return out;
     }
 
@@ -103,12 +88,10 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
             // 1辺目の角度
             let first_side_angle: f32 = floor(moving_side_angle / central_angle) * central_angle;
             // 1辺目の頂点
-            let transformed_vec2f = transform_vertex(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
+            out.position = create_perspective_vec4f(cos(first_side_angle), sin(first_side_angle), -4.0);
         } else {
             // 2辺目の頂点
-            let transformed_vec2f = transform_vertex(cos(moving_side_angle), sin(moving_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
+            out.position = create_perspective_vec4f(cos(moving_side_angle), sin(moving_side_angle), -4.0);
         }
         return out;
     }
@@ -119,14 +102,12 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         let first_side_angle: f32 = f32(out.triangle_local_index) * central_angle;
         if(triangle_vertex_index == 1u) {
             // 1辺目の頂点
-            let transformed_vec2f = transform_vertex(cos(first_side_angle), sin(first_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
+            out.position = create_perspective_vec4f(cos(first_side_angle), sin(first_side_angle), -4.0);
         } else {
             // 2辺目の角度
             let second_side_angle: f32 = first_side_angle + central_angle;
             // 2辺目の頂点
-            let transformed_vec2f = transform_vertex(cos(second_side_angle), sin(second_side_angle), ASPECT_TYPE_CONTAIN);
-            out.position = vec4f(transformed_vec2f, 0.0, 1.0);
+            out.position = create_perspective_vec4f(cos(second_side_angle), sin(second_side_angle), -4.0);
         }
         return out;
     }
