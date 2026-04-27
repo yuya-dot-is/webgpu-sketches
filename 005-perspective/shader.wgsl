@@ -29,31 +29,33 @@ struct VertexOutput {
 };
 
 /**
- * マウスの動きに応じて座標を回転させる
+ * ベクトル(u, v)を、u軸を基準(angle=0)としてv軸の方向に回転させる。
  */
-fn rotate_vec2f_by_mouse_x(x: f32, y: f32) -> vec2f {
-    let angle: f32 = ctx.mouse_x * PI * 2f;
-    let cos_angle: f32 = cos(angle);
-    let sin_angle: f32 = sin(angle);
-    // 回転行列 [[cos, -sin], [sin, cos]] * [x, y] = [x * cos - y + sin, y * sin + y * cos]
-    return vec2f(x * cos_angle - y * sin_angle, x * sin_angle + y * cos_angle);
+fn rotate2d(u: f32, v: f32, angle: f32) -> array<f32, 2> {
+    let cos = cos(angle);
+    let sin = sin(angle);
+    return array<f32, 2>(u * cos - v * sin, u * sin + v * cos);
 }
 
 /**
  * 頂点の座標を変換する
  */
-fn transform_vertex(x: f32, y: f32) -> vec2f {
-    let rotated_vec2f:vec2f = rotate_vec2f_by_mouse_x(x, y);
-    return rotated_vec2f;
+fn transform_vertex(v: vec3f) -> vec3f {
+    // マウスの位置でz軸周りに回転
+    let xy: array<f32, 2> = rotate2d(v.x, v.y, ctx.mouse_x * PI * 2.0);
+    // x軸周りに回転
+    let zy: array<f32, 2> = rotate2d(v.z, xy[1], PI / 8.0);
+    return vec3f(xy[0], zy[1], zy[0]);
 }
 
 /**
  * パースペクティブ変換を適用したvec4fを作成する
  */
-fn create_perspective_vec4f(x: f32, y: f32, z: f32) -> vec4f {
-    let transformed_vec2f = transform_vertex(x, y);
-    let transformed_vec4f = vec4f(transformed_vec2f.x, transformed_vec2f.y, z, 1.0);
-    return ctx.matrix * transformed_vec4f;
+fn create_perspective_vec4f(v: vec3f) -> vec4f {
+    let transformed_vec3f = transform_vertex(v);
+    // 回転した後に、物体全体を奥に押し出す
+    let world_pos = vec4f(transformed_vec3f.x, transformed_vec3f.y, transformed_vec3f.z - 3.0, 1.0);
+    return ctx.matrix * world_pos;
 }
 
 @vertex
@@ -67,7 +69,7 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
 
     // 全ての三角形の共通の中心の頂点
     if(triangle_vertex_index == 0u) {
-        out.position = create_perspective_vec4f(0.0, 0.0, -3.0);
+        out.position = create_perspective_vec4f(vec3f(0.0, 0.0, 0.5));
         return out;
     }
 
@@ -88,10 +90,10 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
             // 1辺目の角度
             let first_side_angle: f32 = floor(moving_side_angle / central_angle) * central_angle;
             // 1辺目の頂点
-            out.position = create_perspective_vec4f(cos(first_side_angle), sin(first_side_angle), -4.0);
+            out.position = create_perspective_vec4f(vec3f(cos(first_side_angle), sin(first_side_angle), -0.5));
         } else {
             // 2辺目の頂点
-            out.position = create_perspective_vec4f(cos(moving_side_angle), sin(moving_side_angle), -4.0);
+            out.position = create_perspective_vec4f(vec3f(cos(moving_side_angle), sin(moving_side_angle), -0.5));
         }
         return out;
     }
@@ -102,12 +104,12 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         let first_side_angle: f32 = f32(out.triangle_local_index) * central_angle;
         if(triangle_vertex_index == 1u) {
             // 1辺目の頂点
-            out.position = create_perspective_vec4f(cos(first_side_angle), sin(first_side_angle), -4.0);
+            out.position = create_perspective_vec4f(vec3f(cos(first_side_angle), sin(first_side_angle), -0.5));
         } else {
             // 2辺目の角度
             let second_side_angle: f32 = first_side_angle + central_angle;
             // 2辺目の頂点
-            out.position = create_perspective_vec4f(cos(second_side_angle), sin(second_side_angle), -4.0);
+            out.position = create_perspective_vec4f(vec3f(cos(second_side_angle), sin(second_side_angle), -0.5));
         }
         return out;
     }
