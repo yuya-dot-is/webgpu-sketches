@@ -1,4 +1,5 @@
 import shaderCode from "./shader.wgsl?raw";
+import UBO from "./UBO";
 
 /**
  * マウスカーソルの位置
@@ -7,33 +8,6 @@ type Mouse = {
     x: number;
     y: number;
 }
-
-/**
- * Uniform Buffer Objectのデータ
- */
-type UniformBufferData = {
-    matrix: Float32Array;
-    time: number;
-    aspectRatio: number;
-    mouseX: number;
-    sideCount: number;
-}
-
-/**
- * Uniform Buffer Objectの並び順
- */
-const UBO_LAYOUT = {
-    MATRIX: 0, // 0〜15番目 mat4x4<f32>
-    TIME: 16, // f32
-    ASPECT_RATIO: 17, // f32
-    MOUSE_X: 18, // f32
-    SIDE_COUNT: 19, // u32
-} as const;
-
-/**
- * Uniform Buffer Objectのサイズ
- */
-const UBO_SIZE = 20 * 4;
 
 /**
  * GPUDeviceを取得する
@@ -91,33 +65,6 @@ const createPipline = (device: GPUDevice, shaderModule: GPUShaderModule, canvasF
             topology: 'triangle-list',
         }
     });
-}
-
-/**
- * WGSLに渡す値を設定する
- */
-const setupUniformBuffer = (device: GPUDevice, pipeline: GPURenderPipeline, dataProvider: () => BufferSource) => {
-    const bindGroupIndex = 0;
-    const buffer = device.createBuffer({
-        size: UBO_SIZE,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    const bindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(bindGroupIndex),
-        entries: [{
-            binding: 0,
-            resource: { buffer }
-        }]
-    });
-    return {
-        update: () => {
-            const data = dataProvider();
-            device.queue.writeBuffer(buffer, 0, data);
-            return data;
-        },
-        bindGroupIndex,
-        bindGroup
-    };
 }
 
 /**
@@ -213,37 +160,6 @@ const createPerspectiveMatrix = (fovDegree: number, aspect: number, near: number
 };
 
 /**
- * numberをbufferArrayに変換する。
- */
-const toArrayBuffer = ({ matrix, time, aspectRatio, mouseX, sideCount }: UniformBufferData): BufferSource => {
-    const buffer = new ArrayBuffer(UBO_SIZE);
-    const f32 = new Float32Array(buffer);
-    const u32 = new Uint32Array(buffer);
-    f32.set(matrix, UBO_LAYOUT.MATRIX); // setメソッドで一括コピー
-    f32[UBO_LAYOUT.TIME] = time;
-    f32[UBO_LAYOUT.ASPECT_RATIO] = aspectRatio;
-    f32[UBO_LAYOUT.MOUSE_X] = mouseX;
-    u32[UBO_LAYOUT.SIDE_COUNT] = sideCount;
-    return f32;
-}
-
-/**
- * bufferArrayをnumberに変換する。
- */
-const fromArrayBuffer = (bufferSource: BufferSource): UniformBufferData => {
-    const buffer = 'buffer' in bufferSource ? bufferSource.buffer : bufferSource;
-    const f32 = new Float32Array(buffer);
-    const u32 = new Uint32Array(buffer);
-    return {
-        matrix: f32.slice(UBO_LAYOUT.MATRIX, UBO_LAYOUT.MATRIX + 16) as Float32Array,
-        time: f32[UBO_LAYOUT.TIME],
-        aspectRatio: f32[UBO_LAYOUT.ASPECT_RATIO],
-        mouseX: f32[UBO_LAYOUT.MOUSE_X],
-        sideCount: u32[UBO_LAYOUT.SIDE_COUNT],
-    };
-}
-
-/**
  * メインの処理
  */
 async function main() {
@@ -265,24 +181,23 @@ async function main() {
     const mouse = setupMouseTracker();
 
     // WGSLに渡す値を設定する
-    const buffer = setupUniformBuffer(device, pipeline, () => {
-        return toArrayBuffer({
-            matrix: createPerspectiveMatrix(45, context.canvas.width / context.canvas.height, 0.1, 100),
-            time: performance.now() / 1000,
-            aspectRatio: context.canvas.width / context.canvas.height,
-            mouseX: mouse.x / context.canvas.width - 0.5,
-            sideCount: mapMouseYToSideCount(mouse.y, context.canvas.height),
-        })
-    });
+    const ubo = new UBO(device, pipeline);
+    ubo.setDataProvider(() => ({
+        matrix: createPerspectiveMatrix(45, context.canvas.width / context.canvas.height, 0.1, 100),
+        time: performance.now() / 1000,
+        aspectRatio: context.canvas.width / context.canvas.height,
+        mouseX: mouse.x / context.canvas.width - 0.5,
+        sideCount: mapMouseYToSideCount(mouse.y, context.canvas.height),
+    }));
 
     // 描画処理
     startRenderLoop(device, context, pipeline, (passEncoder) => {
-        const data = buffer.update(); // WGSLに渡す値を更新する
+        // WGSLに渡す値を更新する
+        ubo.update(device);
         // WGSLに値を渡す
-        passEncoder.setBindGroup(buffer.bindGroupIndex, buffer.bindGroup);
-        const { sideCount } = fromArrayBuffer(data);
-        const vertexCount = (sideCount + 1) * 3;
-        // 3 * (n + 1) 個の頂点を描画
+        passEncoder.setBindGroup(ubo.getBindGroupIndex(), ubo.getBindGroup());
+        // (n + 1) * 3 個の頂点を描画
+        const vertexCount = (ubo.data.sideCount + 1) * 3;
         passEncoder.draw(vertexCount);
     });
 }
