@@ -5,7 +5,7 @@ const UBO_LAYOUT = {
     MATRIX: 0, // 0〜15番目 mat4x4<f32>
     TIME: 16, // f32
     ASPECT_RATIO: 17, // f32
-    MOUSE_X: 18, // f32
+    ANGLE: 18, // f32
     SIDE_COUNT: 19, // u32
 } as const;
 
@@ -31,7 +31,7 @@ interface UBOData {
     matrix: Float32Array;
     time: number;
     aspectRatio: number;
-    mouseX: number;
+    angle: number;
     sideCount: number;
 }
 
@@ -53,7 +53,7 @@ export default class UBO {
         matrix: new Float32Array(16),
         time: 0,
         aspectRatio: 0,
-        mouseX: 0,
+        angle: 0,
         sideCount: 0,
     };
 
@@ -109,7 +109,7 @@ export default class UBO {
         this._cachedF32.set(this.data.matrix, UBO_LAYOUT.MATRIX); // setメソッドで一括コピー
         this._cachedF32[UBO_LAYOUT.TIME] = this.data.time;
         this._cachedF32[UBO_LAYOUT.ASPECT_RATIO] = this.data.aspectRatio;
-        this._cachedF32[UBO_LAYOUT.MOUSE_X] = this.data.mouseX;
+        this._cachedF32[UBO_LAYOUT.ANGLE] = this.data.angle;
         this._cachedU32[UBO_LAYOUT.SIDE_COUNT] = this.data.sideCount;
         return this._cachedF32;
     }

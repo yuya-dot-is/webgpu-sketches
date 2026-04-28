@@ -11,7 +11,7 @@ struct Context {
     matrix: mat4x4<f32>,
     time: f32,
     aspect_ratio: f32,
-    mouse_x: f32,
+    angle: f32,
     side_count: u32,
 };
 
@@ -41,8 +41,8 @@ fn rotate2d(u: f32, v: f32, angle: f32) -> array<f32, 2> {
  * 頂点の座標を変換する
  */
 fn transform_vertex(v: vec3f) -> vec3f {
-    // マウスの位置でz軸周りに回転
-    let xy: array<f32, 2> = rotate2d(v.x, v.y, ctx.mouse_x * PI * 2.0);
+    // z軸周りに回転
+    let xy: array<f32, 2> = rotate2d(v.x, v.y, ctx.angle);
     // x軸周りに回転
     let zy: array<f32, 2> = rotate2d(v.z, xy[1], PI / 8.0);
     return vec3f(xy[0], zy[1], zy[0]);

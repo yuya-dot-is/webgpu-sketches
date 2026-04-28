@@ -130,6 +130,15 @@ const setupMouseTracker = (): Mouse => {
 }
 
 /**
+ * マウスカーソルの位置から角度を計算する
+ */
+const mapMousePosToAngle = (mouse: Mouse, canvasWidth: number, canvasHeight: number) => {
+    const x = (mouse.x / canvasWidth - 0.5) / (canvasWidth / canvasHeight);
+    const y = - (mouse.y / canvasHeight - 0.5);
+    return Math.atan2(y, x);
+}
+
+/**
  * マウスカーソルの位置から多角形の辺の数を計算する
  */
 const mapMouseYToSideCount = (mouseY: number, canvasHeight: number) => {
@@ -186,7 +195,7 @@ async function main() {
         matrix: createPerspectiveMatrix(45, context.canvas.width / context.canvas.height, 0.1, 100),
         time: performance.now() / 1000,
         aspectRatio: context.canvas.width / context.canvas.height,
-        mouseX: mouse.x / context.canvas.width - 0.5,
+        angle: mapMousePosToAngle(mouse, context.canvas.width, context.canvas.height),
         sideCount: mapMouseYToSideCount(mouse.y, context.canvas.height),
     }));
 
