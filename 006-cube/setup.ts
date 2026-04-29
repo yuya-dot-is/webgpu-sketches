@@ -59,6 +59,15 @@ export const setupIndexBuffer = (device: GPUDevice, indexes: Uint32Array) => {
 	return indexBuffer
 };
 
+export const createDepthTexture = (device: GPUDevice, context: GPUCanvasContext) => {
+	const depthTexture = device.createTexture({
+		size: [context.canvas.width, context.canvas.height],
+		format: 'depth24plus', // 一般的な深さフォーマット
+		usage: GPUTextureUsage.RENDER_ATTACHMENT,
+	});
+	return depthTexture;
+}
+
 export const createRenderPipelineDescriptor = (shaderModule: GPUShaderModule, vertexBufferLayouts: GPUVertexBufferLayout[], textureFormat: GPUTextureFormat) => {
 	const descriptor: GPURenderPipelineDescriptor = {
 		vertex: {
@@ -78,12 +87,17 @@ export const createRenderPipelineDescriptor = (shaderModule: GPUShaderModule, ve
 		primitive: {
 			topology: "triangle-list",
 		},
+		depthStencil: {
+			format: 'depth24plus',
+			depthWriteEnabled: true, // 描いたピクセルの深さを記録する
+			depthCompare: 'less',    // 「今あるものより手前なら描く」というルール
+		},
 		layout: "auto",
 	};
 	return descriptor;
 };
 
-export const createRenderPassDescriptor = (context: GPUCanvasContext) => {
+export const createRenderPassDescriptor = (context: GPUCanvasContext, depthTexture: GPUTexture) => {
 	const descriptor: GPURenderPassDescriptor = {
 		colorAttachments: [
 			{
@@ -93,6 +107,12 @@ export const createRenderPassDescriptor = (context: GPUCanvasContext) => {
 			view: context.getCurrentTexture().createView(), // 次のフレームの描画先
 			},
 		],
-	};
+		depthStencilAttachment: {
+			view: depthTexture.createView(),
+			depthClearValue: 1.0,  // 一番奥を1.0としてリセット
+			depthLoadOp: 'clear',
+			depthStoreOp: 'store', // storeOpは'store'でも'discard'でもOK（後で使わないなら）
+		},
+	};	
 	return descriptor;
 }
