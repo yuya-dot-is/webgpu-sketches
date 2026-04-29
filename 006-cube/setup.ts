@@ -8,10 +8,11 @@ export const setupGPU = async () => {
 	assertDefined(adapter, 'GPUAdapter');
 	// アダプターに対して各Webアプリケーション用の論理デバイス（GPUDevice）をリクエスト
 	const device: GPUDevice = await adapter.requestDevice();
-	return { gpu, device }
+	const textureFormat: GPUTextureFormat = gpu.getPreferredCanvasFormat();
+	return { device, textureFormat }
 };
 
-export const setupCanvas = (gpu: GPU, device: GPUDevice) => {
+export const setupCanvas = (device: GPUDevice, textureFormat: GPUTextureFormat) => {
 	const canvas: HTMLCanvasElement | null = document.querySelector('#canvas');
 	assertDefined(canvas, 'HTMLCanvasElement');
 	const context: GPUCanvasContext | null = canvas.getContext('webgpu');
@@ -43,7 +44,7 @@ export const setupIndexBuffer = (device: GPUDevice, indexes: Uint32Array) => {
 	return indexBuffer
 };
 
-export const createRenderPipelineDescriptor = (gpu: GPU, shaderModule: GPUShaderModule, vertexBufferLayouts: GPUVertexBufferLayout[]) => {
+export const createRenderPipelineDescriptor = (shaderModule: GPUShaderModule, vertexBufferLayouts: GPUVertexBufferLayout[], textureFormat: GPUTextureFormat) => {
 	const descriptor: GPURenderPipelineDescriptor = {
 		vertex: {
 			module: shaderModule,
@@ -55,7 +56,7 @@ export const createRenderPipelineDescriptor = (gpu: GPU, shaderModule: GPUShader
 			entryPoint: "fragment_main",
 			targets: [
 				{
-					format: gpu.getPreferredCanvasFormat(),
+					format: textureFormat,
 				},
 			],
 		},

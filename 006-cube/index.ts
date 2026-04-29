@@ -28,13 +28,13 @@ const createMvpMatrix = (context: GPUCanvasContext) => {
 }
 
 const main = async () => {
-    const { gpu, device } = await setupGPU();
-    const { context } = setupCanvas(gpu, device);
+    const { device, textureFormat } = await setupGPU();
+    const { context } = setupCanvas(device, textureFormat);
     const posBuffer = setupVertexBuffer(device, data.positions);
     const indexBuffer = setupIndexBuffer(device, data.indexes);
     const colorBuffer = setupVertexBuffer(device, data.colors);
     const shaderModule = device.createShaderModule({ code: shaderCode });
-    const renderPipelineDescriptor = createRenderPipelineDescriptor(gpu, shaderModule, data.vertexBufferLayouts);
+    const renderPipelineDescriptor = createRenderPipelineDescriptor(shaderModule, data.vertexBufferLayouts, textureFormat);
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
 	const uniformBuffer = new UniformBuffer(device, renderPipeline);
 
@@ -44,17 +44,17 @@ const main = async () => {
 
     function render() {
         uniformBuffer.update(device);
-    const renderPassDescriptor = createRenderPassDescriptor(context);
-    const commandEncoder = device.createCommandEncoder();
-    const passEncoder: GPURenderPassEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-    passEncoder.setPipeline(renderPipeline);
-    passEncoder.setVertexBuffer(0, posBuffer);
-    passEncoder.setVertexBuffer(1, colorBuffer);
-	passEncoder.setIndexBuffer(indexBuffer, 'uint32');
-	passEncoder.setBindGroup(uniformBuffer.getBindGroupIndex(), uniformBuffer.getBindGroup());
-    passEncoder.drawIndexed(data.indexes.length);
-    passEncoder.end();
-    device.queue.submit([commandEncoder.finish()]);
+        const renderPassDescriptor = createRenderPassDescriptor(context);
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder: GPURenderPassEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+        passEncoder.setPipeline(renderPipeline);
+        passEncoder.setVertexBuffer(0, posBuffer);
+        passEncoder.setVertexBuffer(1, colorBuffer);
+        passEncoder.setIndexBuffer(indexBuffer, 'uint32');
+        passEncoder.setBindGroup(uniformBuffer.getBindGroupIndex(), uniformBuffer.getBindGroup());
+        passEncoder.drawIndexed(data.indexes.length);
+        passEncoder.end();
+        device.queue.submit([commandEncoder.finish()]);
         window.requestAnimationFrame(render)
     }
     render();
