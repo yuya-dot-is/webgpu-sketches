@@ -62,10 +62,10 @@ export const createRenderPassDescriptor = (context: GPUCanvasContext, color: GPU
 	const descriptor: GPURenderPassDescriptor = {
 		colorAttachments: [
 			{
-			clearValue: color,
-			loadOp: "clear",
-			storeOp: "store",
-			view: context.getCurrentTexture().createView(),
+			clearValue: color, // 背景を塗りつぶす色
+			loadOp: "clear", // clear: 毎フレームリセット | load: 前の描画状態を引き継ぐ
+			storeOp: "store", // store: 計算結果を画面に表示する場合 | discard: 画面に表示しない場合
+			view: context.getCurrentTexture().createView(), // 次のフレームの描画先
 			},
 		],
 	};
