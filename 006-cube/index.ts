@@ -40,7 +40,10 @@ const main = async () => {
 
 	uniformBuffer.setDataProvider(() => {
 		return { mvpMatrix: createMvpMatrix(context) };
-	}).update(device);
+	});
+
+    function render() {
+        uniformBuffer.update(device);
     const renderPassDescriptor = createRenderPassDescriptor(context);
     const commandEncoder = device.createCommandEncoder();
     const passEncoder: GPURenderPassEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
@@ -52,6 +55,9 @@ const main = async () => {
     passEncoder.drawIndexed(data.indexes.length);
     passEncoder.end();
     device.queue.submit([commandEncoder.finish()]);
+        window.requestAnimationFrame(render)
+    }
+    render();
 }
 
 main();
