@@ -1,5 +1,24 @@
 import { assertDefined } from "./assert";
 
+/**
+ * CanvasのサイズをWindowサイズに合わせる
+ */
+const fitCanvasToWindow = (device: GPUDevice, context: GPUCanvasContext, textureFormat: GPUTextureFormat) => {
+		const handleResize = () => {
+				context.canvas.width = window.innerWidth * window.devicePixelRatio;
+				context.canvas.height = window.innerHeight * window.devicePixelRatio;
+				// WebGPUのコンテキストを新しいサイズで再構成
+				context.configure({
+						device: device,
+						format: textureFormat,
+						// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
+						alphaMode: 'premultiplied',
+				});
+		}
+		handleResize();
+		window.addEventListener('resize', handleResize);
+}
+
 export const setupGPU = async () => {
 	const gpu: GPU | null = navigator.gpu;
 	assertDefined(gpu, 'WebGPU');
@@ -17,13 +36,9 @@ export const setupCanvas = (device: GPUDevice, textureFormat: GPUTextureFormat) 
 	assertDefined(canvas, 'HTMLCanvasElement');
 	const context: GPUCanvasContext | null = canvas.getContext('webgpu');
 	assertDefined(context, 'GPUCanvasContext');
-	context.configure({
-		device,
-		format: gpu.getPreferredCanvasFormat(),
-		// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
-		alphaMode: 'premultiplied', 
-	})
-	return { canvas, context }
+	// CanvasのサイズをWindowサイズに合わせる
+	fitCanvasToWindow(device, context, textureFormat);
+	return { context }
 };
 
 export const setupVertexBuffer = (device: GPUDevice, vertices: Float32Array) => {
