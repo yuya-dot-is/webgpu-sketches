@@ -27,11 +27,20 @@ export const setupCanvas = (gpu: GPU, device: GPUDevice) => {
 
 export const setupVertexBuffer = (device: GPUDevice, vertices: Float32Array) => {
 	const vertexBuffer: GPUBuffer = device.createBuffer({
-			size: vertices.byteLength, // 頂点を格納するのに十分な大きさにする
+			size: vertices.byteLength,
 			usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 		});
 	device.queue.writeBuffer(vertexBuffer, 0, vertices, 0, vertices.length);
 	return vertexBuffer
+};
+
+export const setupIndexBuffer = (device: GPUDevice, indexes: Uint32Array) => {
+	const indexBuffer: GPUBuffer = device.createBuffer({
+			size: indexes.byteLength,
+			usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+		});
+	device.queue.writeBuffer(indexBuffer, 0, indexes, 0, indexes.length);
+	return indexBuffer
 };
 
 export const createRenderPipelineDescriptor = (gpu: GPU, shaderModule: GPUShaderModule, vertexBufferLayouts: GPUVertexBufferLayout[]) => {
@@ -58,11 +67,11 @@ export const createRenderPipelineDescriptor = (gpu: GPU, shaderModule: GPUShader
 	return descriptor;
 };
 
-export const createRenderPassDescriptor = (context: GPUCanvasContext, color: GPUColor) => {
+export const createRenderPassDescriptor = (context: GPUCanvasContext) => {
 	const descriptor: GPURenderPassDescriptor = {
 		colorAttachments: [
 			{
-			clearValue: color, // 背景を塗りつぶす色
+			clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.5 }, // 背景を塗りつぶす色
 			loadOp: "clear", // clear: 毎フレームリセット | load: 前の描画状態を引き継ぐ
 			storeOp: "store", // store: 計算結果を画面に表示する場合 | discard: 画面に表示しない場合
 			view: context.getCurrentTexture().createView(), // 次のフレームの描画先
