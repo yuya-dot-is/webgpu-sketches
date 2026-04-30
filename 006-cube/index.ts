@@ -1,4 +1,4 @@
-import { setupGPU, setupCanvas, setupVertexBuffer, setupIndexBuffer, createRenderPipelineDescriptor, createRenderPassDescriptor, createDepthTexture } from './setup';
+import { setupGPU, setupCanvas, setupVertexBuffer, setupIndexBuffer, createRenderPipelineDescriptor, createRenderPassDescriptor, createDepthTexture, fitCanvasToWindow } from './setup';
 import shaderCode from './shader.wgsl?raw';
 import * as data from './data';
 import UniformBuffer from './UniformBuffer';
@@ -29,12 +29,17 @@ const createMvpMatrix = (context: GPUCanvasContext) => {
 
 const main = async () => {
     const { device, textureFormat } = await setupGPU();
-    const { context } = setupCanvas(device, textureFormat);
+    const { context } = setupCanvas();
     const posBuffer = setupVertexBuffer(device, data.positions);
     const indexBuffer = setupIndexBuffer(device, data.indexes);
     const colorBuffer = setupVertexBuffer(device, data.colors);
     const shaderModule = device.createShaderModule({ code: shaderCode });
-    const depthTexture = createDepthTexture(device, context);
+    fitCanvasToWindow(device, context, textureFormat);
+    let depthTexture = createDepthTexture(device, context);
+    addEventListener('resize', () => {
+        fitCanvasToWindow(device, context, textureFormat);
+        depthTexture = createDepthTexture(device, context);
+    });
     const renderPipelineDescriptor = createRenderPipelineDescriptor(shaderModule, data.vertexBufferLayouts, textureFormat);
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
 	const uniformBuffer = new UniformBuffer(device, renderPipeline);

@@ -3,20 +3,16 @@ import { assertDefined } from "./assert";
 /**
  * CanvasのサイズをWindowサイズに合わせる
  */
-const fitCanvasToWindow = (device: GPUDevice, context: GPUCanvasContext, textureFormat: GPUTextureFormat) => {
-		const handleResize = () => {
-				context.canvas.width = window.innerWidth * window.devicePixelRatio;
-				context.canvas.height = window.innerHeight * window.devicePixelRatio;
-				// WebGPUのコンテキストを新しいサイズで再構成
-				context.configure({
-						device: device,
-						format: textureFormat,
-						// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
-						alphaMode: 'premultiplied',
-				});
-		}
-		handleResize();
-		window.addEventListener('resize', handleResize);
+export const fitCanvasToWindow = (device: GPUDevice, context: GPUCanvasContext, textureFormat: GPUTextureFormat) => {
+	context.canvas.width = window.innerWidth * window.devicePixelRatio;
+	context.canvas.height = window.innerHeight * window.devicePixelRatio;
+	// WebGPUのコンテキストを新しいサイズで再構成
+	context.configure({
+		device: device,
+		format: textureFormat,
+		// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
+		alphaMode: 'premultiplied',
+	});
 }
 
 export const setupGPU = async () => {
@@ -31,13 +27,11 @@ export const setupGPU = async () => {
 	return { device, textureFormat }
 };
 
-export const setupCanvas = (device: GPUDevice, textureFormat: GPUTextureFormat) => {
+export const setupCanvas = () => {
 	const canvas: HTMLCanvasElement | null = document.querySelector('#canvas');
 	assertDefined(canvas, 'HTMLCanvasElement');
 	const context: GPUCanvasContext | null = canvas.getContext('webgpu');
 	assertDefined(context, 'GPUCanvasContext');
-	// CanvasのサイズをWindowサイズに合わせる
-	fitCanvasToWindow(device, context, textureFormat);
 	return { context }
 };
 
