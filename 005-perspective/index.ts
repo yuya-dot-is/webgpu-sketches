@@ -192,7 +192,7 @@ async function main() {
     // WGSLに渡す値を設定する
     const ubo = new UBO(device, pipeline);
     ubo.setDataProvider(() => ({
-        matrix: createPerspectiveMatrix(45, context.canvas.width / context.canvas.height, 0.1, 100),
+        matrix: createPerspectiveMatrix(60, context.canvas.width / context.canvas.height, 0.1, 100),
         time: performance.now() / 1000,
         aspectRatio: context.canvas.width / context.canvas.height,
         angle: mapMousePosToAngle(mouse, context.canvas.width, context.canvas.height),

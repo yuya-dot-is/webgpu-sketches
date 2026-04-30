@@ -149,8 +149,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     }
 
     // 各色を計算（少しずつずらすことで、彩度のあるグラデーションになるように調整）
-    let r: f32 = sin(color_change_amount / 0.9) * 0.5 + 0.5;
-    let g: f32 = sin(color_change_amount / 0.95) * 0.5 + 0.5;
-    let b: f32 = sin(color_change_amount / 1.0) * 0.5 + 0.5; 
+    let r: f32 = sin(color_change_amount / 0.9) * 0.4 + 0.6;
+    let g: f32 = sin(color_change_amount / 0.95) * 0.4 + 0.6;
+    let b: f32 = sin(color_change_amount / 1.0) * 0.4 + 0.6;
     return vec4f(r, g, b, 1.0);
 }
