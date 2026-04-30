@@ -2,13 +2,14 @@
  * Uniform Bufferの並び順
  */
 const UNIFORM_BUFFER_LAYOUT = {
-    MVP_MATRIX: 0, // 0〜15番目 mat4x4<f32>
+    MVP: 0, // 0〜15番目 mat4x4<f32>
+    MODEL: 16 // 16〜31番目 mat4x4<f32>
 } as const;
 
 /**
  * Uniform Bufferのサイズ
  */
-const UNIFORM_BUFFER_SIZE = 4 * 16;
+const UNIFORM_BUFFER_SIZE = 4 * 32;
 
 /**
  * Uniform Bufferのバインドグループのインデックス
@@ -24,7 +25,8 @@ const BIND_INDEX = 0;
  * Uniform Bufferのコンテキスト
  */
 interface UniformBufferData {
-    mvpMatrix: Float32Array;
+    mvp: Float32Array;
+    model: Float32Array;
 }
 
 export default class UniformBuffer {
@@ -41,7 +43,8 @@ export default class UniformBuffer {
 
     // データ
     public data: UniformBufferData = {
-        mvpMatrix: new Float32Array(16),
+        mvp: new Float32Array(16),
+        model: new Float32Array(16),
     };
 
     constructor(device: GPUDevice, pipeline: GPURenderPipeline) {
@@ -93,7 +96,8 @@ export default class UniformBuffer {
      * バッファに書き込むためのバイトデータを返す
      */
     private getBytes(): BufferSource {
-        this._cachedF32.set(this.data.mvpMatrix, UNIFORM_BUFFER_LAYOUT.MVP_MATRIX);
+        this._cachedF32.set(this.data.mvp, UNIFORM_BUFFER_LAYOUT.MVP);
+        this._cachedF32.set(this.data.model, UNIFORM_BUFFER_LAYOUT.MODEL);
         return this._cachedF32;
     }
 }
