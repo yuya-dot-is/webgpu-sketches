@@ -11,7 +11,7 @@ export const fitCanvasToWindow = (device: GPUDevice, context: GPUCanvasContext, 
 		device: device,
 		format: textureFormat,
 		// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
-		alphaMode: 'premultiplied',
+		alphaMode: 'opaque',
 	});
 }
 
@@ -95,7 +95,7 @@ export const createRenderPassDescriptor = (context: GPUCanvasContext, depthTextu
 	const descriptor: GPURenderPassDescriptor = {
 		colorAttachments: [
 			{
-			clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.5 }, // 背景を塗りつぶす色
+			clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }, // 背景を塗りつぶす色
 			loadOp: "clear", // clear: 毎フレームリセット | load: 前の描画状態を引き継ぐ
 			storeOp: "store", // store: 計算結果を画面に表示する場合 | discard: 画面に表示しない場合
 			view: context.getCurrentTexture().createView(), // 次のフレームの描画先
