@@ -168,7 +168,7 @@ const fitCanvasToWindow = (context: GPUCanvasContext, device: GPUDevice, canvasF
  */
 const setupMouseTracker = (): Mouse => {
     const mouse = { x: 0, y: 0 };
-    window.addEventListener('mousemove', (evt: MouseEvent) => {
+    window.addEventListener('pointermove', (evt: MouseEvent) => {
         mouse.x = evt.offsetX;
         mouse.y = evt.offsetY;
     });
