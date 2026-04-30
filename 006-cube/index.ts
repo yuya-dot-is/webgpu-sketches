@@ -1,4 +1,4 @@
-import { setupGPU, setupCanvas, setupVertexBuffer, setupIndexBuffer, createRenderPipelineDescriptor, createRenderPassDescriptor, createDepthTexture, fitCanvasToWindow } from './setup';
+import { setupGPU, setupCanvas, setupVertexBuffer, setupIndexBuffer, createRenderPipelineDescriptor, createRenderPassDescriptor, createDepthTexture } from './setup';
 import shaderCode from './shader.wgsl?raw';
 import * as data from './data';
 import UniformBuffer from './UniformBuffer';
@@ -34,7 +34,6 @@ const main = async () => {
     const indexBuffer = setupIndexBuffer(device, data.indexes);
     const colorBuffer = setupVertexBuffer(device, data.colors);
     const shaderModule = device.createShaderModule({ code: shaderCode });
-    fitCanvasToWindow(device, context, textureFormat);
     const depthTexture = createDepthTexture(device, context);
     const renderPipelineDescriptor = createRenderPipelineDescriptor(shaderModule, data.vertexBufferLayouts, textureFormat);
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
