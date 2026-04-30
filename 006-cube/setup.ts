@@ -4,15 +4,19 @@ import { assertDefined } from "./assert";
  * CanvasのサイズをWindowサイズに合わせる
  */
 export const fitCanvasToWindow = (device: GPUDevice, context: GPUCanvasContext, textureFormat: GPUTextureFormat) => {
-	context.canvas.width = window.innerWidth * window.devicePixelRatio;
-	context.canvas.height = window.innerHeight * window.devicePixelRatio;
-	// WebGPUのコンテキストを新しいサイズで再構成
-	context.configure({
-		device: device,
-		format: textureFormat,
-		// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
-		alphaMode: 'opaque',
-	});
+	const handleResize = () => {
+		context.canvas.width = window.innerWidth * window.devicePixelRatio;
+		context.canvas.height = window.innerHeight * window.devicePixelRatio;
+		// WebGPUのコンテキストを新しいサイズで再構成
+		context.configure({
+			device: device,
+			format: textureFormat,
+			// NOTE: opaque: 不透明 | premultiplied: 透過。RBG各値にalpha値が乗算済みである必要がある。
+			alphaMode: 'opaque',
+		});
+	}
+	handleResize();
+	addEventListener('resize', handleResize);
 }
 
 export const setupGPU = async () => {
@@ -27,11 +31,12 @@ export const setupGPU = async () => {
 	return { device, textureFormat }
 };
 
-export const setupCanvas = () => {
+export const setupCanvas = (device: GPUDevice, textureFormat: GPUTextureFormat) => {
 	const canvas: HTMLCanvasElement | null = document.querySelector('#canvas');
 	assertDefined(canvas, 'HTMLCanvasElement');
 	const context: GPUCanvasContext | null = canvas.getContext('webgpu');
 	assertDefined(context, 'GPUCanvasContext');
+	fitCanvasToWindow(device, context, textureFormat)
 	return { context }
 };
 
@@ -54,11 +59,21 @@ export const setupIndexBuffer = (device: GPUDevice, indexes: Uint32Array) => {
 };
 
 export const createDepthTexture = (device: GPUDevice, context: GPUCanvasContext) => {
-	const depthTexture = device.createTexture({
-		size: [context.canvas.width, context.canvas.height],
-		format: 'depth24plus', // 一般的な深さフォーマット
-		usage: GPUTextureUsage.RENDER_ATTACHMENT,
-	});
+	const createDescriptor = (width: number, height: number) => {
+		return {
+			size: [width, height],
+			format: 'depth24plus' as const, // 一般的な深さフォーマット
+			usage: GPUTextureUsage.RENDER_ATTACHMENT,
+		}
+	};
+	const depthTexture = {
+		current: device.createTexture(createDescriptor(context.canvas.width, context.canvas.height)),
+	};
+	const handleResize = () => {
+		depthTexture.current.destroy();
+		depthTexture.current = device.createTexture(createDescriptor(context.canvas.width, context.canvas.height));
+	};
+	addEventListener('resize', handleResize);
 	return depthTexture;
 }
 

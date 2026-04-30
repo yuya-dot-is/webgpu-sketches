@@ -4,9 +4,6 @@ import * as data from './data';
 import UniformBuffer from './UniformBuffer';
 import { mat4 } from 'wgpu-matrix';
 
-
-
-
 const createMvpMatrix = (context: GPUCanvasContext, dist: Float32Array) => {
     // Projection Matrix (WebGPUの 0~1 Z-rangeに自動対応)
     const aspect = context.canvas.width / context.canvas.height;
@@ -29,18 +26,13 @@ const createMvpMatrix = (context: GPUCanvasContext, dist: Float32Array) => {
 
 const main = async () => {
     const { device, textureFormat } = await setupGPU();
-    const { context } = setupCanvas();
+    const { context } = setupCanvas(device, textureFormat);
     const posBuffer = setupVertexBuffer(device, data.positions);
     const indexBuffer = setupIndexBuffer(device, data.indexes);
     const colorBuffer = setupVertexBuffer(device, data.colors);
     const shaderModule = device.createShaderModule({ code: shaderCode });
     fitCanvasToWindow(device, context, textureFormat);
-    let depthTexture = createDepthTexture(device, context);
-    addEventListener('resize', () => {
-        fitCanvasToWindow(device, context, textureFormat);
-        depthTexture.destroy();
-        depthTexture = createDepthTexture(device, context);
-    });
+    const depthTexture = createDepthTexture(device, context);
     const renderPipelineDescriptor = createRenderPipelineDescriptor(shaderModule, data.vertexBufferLayouts, textureFormat);
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
 	const uniformBuffer = new UniformBuffer(device, renderPipeline);
@@ -52,7 +44,7 @@ const main = async () => {
 
     function render() {
         uniformBuffer.update(device);
-        const renderPassDescriptor = createRenderPassDescriptor(context, depthTexture);
+        const renderPassDescriptor = createRenderPassDescriptor(context, depthTexture.current);
         const commandEncoder = device.createCommandEncoder();
         const passEncoder: GPURenderPassEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
         passEncoder.setPipeline(renderPipeline);
