@@ -1,6 +1,7 @@
 struct Uniforms {
   mvp : mat4x4f,
   model : mat4x4f,
+  eye_pos: vec3f,
 }
 @group(0) @binding(0) var<uniform> uniforms : Uniforms;
 
@@ -50,11 +51,19 @@ fn fragment_main(
   
   // ランバート反射（内積）の計算
   let diffuse_intensity = max(dot(N, light_dir), 0.0);
+
+  // 鏡面反射の計算例
+  let view_dir = normalize(uniforms.eye_pos - in.world_pos);
+  let reflect_dir = reflect(-light_dir, N);
+  let spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32.0); // 32は光沢の鋭さ
   
   // 環境光（真っ暗にしないための底上げ）
   let ambient = 0.1;
   
   // 最終的な色の合成
   let light_factor = diffuse_intensity + ambient;
+  let base_color = in.color.rgb * light_factor;
+  let final_color = base_color + vec3f(spec); // ツヤを足す
+
   return vec4f(in.color.rgb * light_factor, in.color.a);;
 }

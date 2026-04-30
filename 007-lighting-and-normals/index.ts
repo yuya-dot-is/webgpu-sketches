@@ -4,16 +4,18 @@ import * as data from './data';
 import UniformBuffer from './UniformBuffer';
 import { mat4 } from 'wgpu-matrix';
 
-const createMatrix = (context: GPUCanvasContext, dist: { mvp: Float32Array, model: Float32Array }) => {
+const createMatrix = (context: GPUCanvasContext, dist: { mvp: Float32Array, model: Float32Array, eyePos: Float32Array }) => {
     // Projection Matrix (WebGPUの 0~1 Z-rangeに自動対応)
     const aspect = context.canvas.width / context.canvas.height;
     // TODO: 行列の内容をコメントで記載
     const projection = mat4.perspective(Math.PI / 4, aspect, 0.1, 100);
 
+    dist.eyePos = new Float32Array([0, 3, 3]);
+
     // View Matrix (カメラの位置)
     // TODO: 行列の内容をコメントで記載
     const view = mat4.lookAt(
-        [0, 3, 3], // カメラの位置 (eye)
+        dist.eyePos, // カメラの位置 (eye)
         [0, 0, 0], // 注視点 (target)
         [0, 5, 0]  // 上方向 (up)
     );
@@ -39,12 +41,13 @@ const main = async () => {
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
 	const uniformBuffer = new UniformBuffer(device, renderPipeline);
 
-    const mvpMatrix = { data: { mvp: new Float32Array(16), model: new Float32Array(16) } };
+    const mvpMatrix = { data: { mvp: new Float32Array(16), model: new Float32Array(16), eyePos: new Float32Array(3) } };
 	uniformBuffer.setDataProvider(() => {
-        const { mvp, model } = createMatrix(context, mvpMatrix.data);
+        const { mvp, model, eyePos } = createMatrix(context, mvpMatrix.data);
 		return { 
             mvp,
             model,
+            eyePos,
         };
 	});
 
