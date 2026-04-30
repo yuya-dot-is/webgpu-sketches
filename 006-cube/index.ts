@@ -38,6 +38,7 @@ const main = async () => {
     let depthTexture = createDepthTexture(device, context);
     addEventListener('resize', () => {
         fitCanvasToWindow(device, context, textureFormat);
+        depthTexture.destroy();
         depthTexture = createDepthTexture(device, context);
     });
     const renderPipelineDescriptor = createRenderPipelineDescriptor(shaderModule, data.vertexBufferLayouts, textureFormat);
