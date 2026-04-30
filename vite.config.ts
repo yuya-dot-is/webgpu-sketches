@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import { resolve } from 'path'
 import fs from 'fs'
 
@@ -15,6 +16,12 @@ export default defineConfig({
 
         },
     },
+    plugins: [
+        basicSsl()
+    ],
+    server: {
+        host: true
+    }
 })
 
 // ルートディレクトリにある「00」から始まるディレクトリを取得
