@@ -7,12 +7,12 @@ import { mat4 } from 'wgpu-matrix';
 
 
 
-const createMvpMatrix = (context: GPUCanvasContext) => {
-    // 1. Projection Matrix (WebGPUの 0~1 Z-rangeに自動対応)
+const createMvpMatrix = (context: GPUCanvasContext, dist: Float32Array) => {
+    // Projection Matrix (WebGPUの 0~1 Z-rangeに自動対応)
     const aspect = context.canvas.width / context.canvas.height;
     const projection = mat4.perspective(Math.PI / 4, aspect, 0.1, 100);
 
-    // 2. View Matrix (カメラの位置)
+    // View Matrix (カメラの位置)
     const view = mat4.lookAt(
         [0, 0, 5], // カメラの位置 (eye)
         [0, 0, 0], // 注視点 (target)
@@ -22,9 +22,9 @@ const createMvpMatrix = (context: GPUCanvasContext) => {
     // 3. Model Matrix (回転)
     const model = mat4.rotationY(performance.now() / 1000);
 
-    // 4. MVPを統合 (計算順序は右から左: P * V * M)
-    const mvpMatrix = mat4.multiply(projection, mat4.multiply(view, model));
-    return mvpMatrix;
+    // MVPを統合 (計算順序は右から左: P * V * M)
+    mat4.multiply(projection, mat4.multiply(view, model), dist);
+    return dist;
 }
 
 const main = async () => {
@@ -44,8 +44,9 @@ const main = async () => {
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
 	const uniformBuffer = new UniformBuffer(device, renderPipeline);
 
+    const mvpMatrix = { data: new Float32Array(16) };
 	uniformBuffer.setDataProvider(() => {
-		return { mvpMatrix: createMvpMatrix(context) };
+		return { mvpMatrix: createMvpMatrix(context, mvpMatrix.data) };
 	});
 
     function render() {
