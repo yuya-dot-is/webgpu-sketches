@@ -1,107 +1,89 @@
-/**
- * Uniform Bufferの並び順
- */
-const UNIFORM_BUFFER_LAYOUT = {
-    MVP: 0, // 0〜15番目 4 bytes * 16個
-    MODEL: 16, // 16〜31番目 4 bytes * 16個
-    EYE_POS: 32, // 32〜35番目 4 bytes * 4個（16の倍数である必要があるので、35番目はパディング） 
+type TypeMap = {
+    float32: Float32Array;
+    int32: Int32Array;
+};
+
+type Layout = {
+    readonly name: string,
+    readonly length: number,
+    readonly type: keyof TypeMap
+}
+
+type UniformBufferData = {
+    [T in typeof CONFIG.LAYOUT[number] as T['name']]: TypeMap[T['type']];
+};
+
+const CONFIG = {
+    BIND_GROUP_INDEX: 0,
+    BIND_INDEX: 0,
+    LAYOUT: [
+        { name: 'mvp', length: 16, type: 'float32' },
+        { name: 'model', length: 16, type: 'float32' },
+        { name: 'eyePos', length: 3, type: 'float32' },
+    ] as const satisfies Layout[],
 } as const;
 
-/**
- * Uniform Bufferのサイズ
- */
-const UNIFORM_BUFFER_SIZE = 4 * 36;
+const uniformIBufferInfo = (<T extends readonly { name: string, length: number }[]>(layouts: T) => {
+    type Name = T[number]['name'];
+    const layout = {} as Record<Name, { offset: number, length: number }>;
+    let offset = 0;
+    for(let i = 0; i < layouts.length; i+= 1) {
+        const item = layouts[i];
+        layout[item.name as Name] = {
+            offset,
+            length: item.length
+        };
+        offset += Math.ceil(item.length / 4) * 4;
+    }
+    return { size: offset * 4, layout };
+})(CONFIG.LAYOUT);
 
-/**
- * Uniform Bufferのバインドグループのインデックス
- */
-const BIND_GROUP_INDEX = 0;
-
-/**
- * Uniform Bufferのバインドインデックス
- */
-const BIND_INDEX = 0;
-
-/**
- * Uniform Bufferのコンテキスト
- */
-interface UniformBufferData {
-    mvp: Float32Array;
-    model: Float32Array;
-    eyePos: Float32Array;
+const cachedArrayBuffer =  new ArrayBuffer(uniformIBufferInfo.size);
+const bytes = {
+    f32: new Float32Array(cachedArrayBuffer),
 }
 
-export default class UniformBuffer {
-    // bufferデータのキャッシュ
-    private _cachedArrayBuffer = new ArrayBuffer(UNIFORM_BUFFER_SIZE);
-    private _cachedF32 = new Float32Array(this._cachedArrayBuffer);
+let dataProvider: () => UniformBufferData | null = () => null;
 
-    // GPUリソース
-    private _bindGroup: GPUBindGroup;
-    private _buffer: GPUBuffer;
-
-    // データ更新用関数
-    private _dataProvider: () => UniformBufferData | null = () => null;
-
-    // データ
-    public data: UniformBufferData = {
-        mvp: new Float32Array(16),
-        model: new Float32Array(16),
-        eyePos: new Float32Array(3),
-    };
-
-    constructor(device: GPUDevice, pipeline: GPURenderPipeline) {
-        this._buffer = device.createBuffer({
-            size: UNIFORM_BUFFER_SIZE,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
-        this._bindGroup = device.createBindGroup({
-            layout: pipeline.getBindGroupLayout(BIND_GROUP_INDEX),
-            entries: [{
-                binding: BIND_INDEX,
-                resource: { buffer: this._buffer }
-            }]
-        });
-    }
-
-    /**
-     * getter
-     */
-    public getBindGroupIndex() {
-        return BIND_GROUP_INDEX;
-    }
-
-    public getBindGroup() {
-        return this._bindGroup;
-    }
-
-    /**
-     * setter
-     */
-    public setDataProvider(dataProvider: () => UniformBufferData) {
-        this._dataProvider = dataProvider;
-        return this;
-    }
-
-    /**
-     * バッファを更新する
-     */
-    public update(device: GPUDevice) {
-        const data = this._dataProvider();
-        if (data) {
-            this.data = data;
-            device.queue.writeBuffer(this._buffer, 0, this.getBytes());
+export default function UniformBuffer(device: GPUDevice, pipeline: GPURenderPipeline) {
+    const _device = device;
+    const _buffer = device.createBuffer({
+        size: uniformIBufferInfo.size,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    const _bindGroup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(CONFIG.BIND_GROUP_INDEX),
+        entries: [{
+            binding: CONFIG.BIND_INDEX,
+            resource: { buffer: _buffer }
+        }]
+    });
+    return {
+        BIND_GROUP_INDEX: CONFIG.BIND_GROUP_INDEX,
+        BIND_INDEX: CONFIG.BIND_INDEX,
+        getBindGroup() {
+            return _bindGroup;
+        },
+        /**
+         * バッファを更新する
+         */
+        update() {
+            const provided = dataProvider();
+            if (!provided) {
+                return;
+            }
+            for (const [name, layout] of Object.entries(uniformIBufferInfo.layout)) {
+                type Name = keyof UniformBufferData;
+                const key = name as Name;
+                bytes.f32.set(provided[key], layout.offset);
+            }
+            _device.queue.writeBuffer(_buffer, 0, bytes.f32);
+        },
+        /**
+         * データ更新用関数をセットする
+         */
+        setDataProvider(provider: () => UniformBufferData) {
+            dataProvider = provider;
         }
-        return this;
-    }
-
-    /**
-     * バッファに書き込むためのバイトデータを返す
-     */
-    private getBytes(): BufferSource {
-        this._cachedF32.set(this.data.mvp, UNIFORM_BUFFER_LAYOUT.MVP);
-        this._cachedF32.set(this.data.model, UNIFORM_BUFFER_LAYOUT.MODEL);
-        this._cachedF32.set(this.data.eyePos, UNIFORM_BUFFER_LAYOUT.EYE_POS);
-        return this._cachedF32;
-    }
-}
+    } as const;
+};

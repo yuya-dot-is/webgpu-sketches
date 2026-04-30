@@ -39,7 +39,7 @@ const main = async () => {
     const depthTexture = createDepthTexture(device, context);
     const renderPipelineDescriptor = createRenderPipelineDescriptor(shaderModule, data.vertexBufferLayouts, textureFormat);
     const renderPipeline = device.createRenderPipeline(renderPipelineDescriptor);
-	const uniformBuffer = new UniformBuffer(device, renderPipeline);
+	const uniformBuffer = UniformBuffer(device, renderPipeline);
 
     const mvpMatrix = { data: { mvp: new Float32Array(16), model: new Float32Array(16), eyePos: new Float32Array(3) } };
 	uniformBuffer.setDataProvider(() => {
@@ -52,14 +52,14 @@ const main = async () => {
 	});
 
     function render() {
-        uniformBuffer.update(device);
+        uniformBuffer.update();
         const renderPassDescriptor = createRenderPassDescriptor(context, depthTexture.current);
         const commandEncoder = device.createCommandEncoder();
         const passEncoder: GPURenderPassEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
         passEncoder.setPipeline(renderPipeline);
         passEncoder.setVertexBuffer(0, vertexBuffer);
         passEncoder.setIndexBuffer(indexBuffer, 'uint32');
-        passEncoder.setBindGroup(uniformBuffer.getBindGroupIndex(), uniformBuffer.getBindGroup());
+        passEncoder.setBindGroup(uniformBuffer.BIND_GROUP_INDEX, uniformBuffer.getBindGroup());
         passEncoder.drawIndexed(data.indexes.length);
         passEncoder.end();
         device.queue.submit([commandEncoder.finish()]);
